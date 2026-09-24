@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Chat de ella</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F5F6F9; --surface:#FFFFFF; --ink:#1B1E27; --muted:#6B7080;
+  --line:#E3E5EC; --user:#E7E9F7; --accent:#4452C9; --accent-ink:#FFFFFF;
+  --font:'Figtree', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#15171D; --surface:#1E2129; --ink:#ECEDF2; --muted:#9296A4;
+    --line:#2C303A; --user:#2B3050; --accent:#8E98F2; --accent-ink:#15171D;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#15171D; --surface:#1E2129; --ink:#ECEDF2; --muted:#9296A4;
+  --line:#2C303A; --user:#2B3050; --accent:#8E98F2; --accent-ink:#15171D;
+}
+*,*::before,*::after{box-sizing:inherit}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);-webkit-font-smoothing:antialiased;overflow:hidden}
+button,textarea,input,select{font:inherit;color:inherit}
+
+/* ---------- Editor ---------- */
+#editor{height:100%;overflow-y:auto;padding:20px 18px 40px;max-width:640px;margin:0 auto}
+#editor h1{font-size:1.5rem;font-weight:700;margin:4px 0 6px}
+#editor p.hint{color:var(--muted);margin:0 0 18px;line-height:1.5;font-size:.95rem}
+#editor code{background:var(--user);padding:1px 6px;border-radius:5px;font-size:.9em}
+.voicebox{margin-top:14px;border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:14px}
+.voicebox select{width:100%;border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:10px}
+.ghost{margin-top:14px;border:1px solid var(--accent);background:transparent;color:var(--accent);border-radius:10px;padding:9px 14px;font-weight:600;cursor:pointer}
+.vnote{color:var(--muted);font-size:.85rem;margin:10px 0 0;line-height:1.45}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:4px;background:var(--line);padding:4px;border-radius:12px}
+.seg button{border:0;background:transparent;padding:10px;border-radius:9px;font-weight:600;color:var(--muted);cursor:pointer}
+.seg button[aria-selected="true"]{background:var(--surface);color:var(--ink)}
+label.f{display:block;font-weight:600;font-size:.9rem;margin:16px 0 6px}
+textarea#script{width:100%;min-height:260px;border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:12px;line-height:1.5;resize:vertical}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.row input,.row select{width:100%;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:10px}
+.row input[type=range]{padding:0}
+.check{display:flex;align-items:center;gap:10px;margin-top:14px;font-size:.95rem}
+.check input{width:20px;height:20px;accent-color:var(--accent)}
+#start{margin-top:22px;width:100%;padding:15px;border:0;border-radius:14px;background:var(--accent);color:var(--accent-ink);font-weight:700;font-size:1.05rem;cursor:pointer}
+#start:focus-visible,button:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.tips{margin-top:22px;color:var(--muted);font-size:.9rem;line-height:1.55}
+
+/* ---------- Escena ---------- */
+#scene{display:none;height:100%;flex-direction:column;background:var(--bg)}
+#scene.on{display:flex}
+header.top{display:flex;align-items:center;justify-content:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line);background:var(--surface);position:relative}
+.mark{width:26px;height:26px;border-radius:50%;background:conic-gradient(from 200deg,var(--accent),#9B6FE0,#3FB7C9,var(--accent));position:relative}
+.mark::after{content:"";position:absolute;inset:7px;border-radius:50%;background:var(--surface)}
+.top .name{font-weight:700;font-size:1.05rem}
+.top .model{font-size:.8rem;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:2px 8px}
+#restart{position:absolute;right:0;top:0;width:56px;height:100%;background:transparent;border:0;opacity:0}
+#exit{position:absolute;left:0;top:0;width:56px;height:100%;background:transparent;border:0;opacity:0}
+
+#msgs{flex:1;overflow-y:auto;padding:18px 16px 10px;display:flex;flex-direction:column;gap:18px;scroll-behavior:smooth}
+.empty{margin:auto;text-align:center;color:var(--muted)}
+.empty .mark{width:52px;height:52px;margin:0 auto 14px}
+.empty .mark::after{inset:13px}
+.empty h2{color:var(--ink);font-size:1.35rem;font-weight:600;margin:0 0 6px}
+
+.u{align-self:flex-end;max-width:82%;background:var(--user);padding:10px 14px;border-radius:20px 20px 6px 20px;line-height:1.45;font-size:1rem;white-space:pre-wrap;word-wrap:break-word;animation:pop .22s ease-out}
+.a{display:flex;gap:10px;align-items:flex-start;max-width:100%}
+.a .mark{flex:0 0 auto;width:24px;height:24px;margin-top:2px}
+.a .mark::after{inset:6px}
+.a .body{flex:1;line-height:1.55;font-size:1rem;word-wrap:break-word;min-width:0}
+.a .body p{margin:0 0 10px}
+.a .body p:last-child{margin-bottom:0}
+.a .body ul{margin:0 0 10px;padding-left:20px}
+.cursor{display:inline-block;width:9px;height:9px;border-radius:50%;background:var(--ink);margin-left:3px;vertical-align:middle;animation:blink .9s infinite}
+.thinking{display:flex;gap:5px;padding-top:9px}
+.thinking i{width:7px;height:7px;border-radius:50%;background:var(--muted);animation:bounce 1.1s infinite}
+.thinking i:nth-child(2){animation-delay:.15s}
+.thinking i:nth-child(3){animation-delay:.3s}
+.status{font-size:.88rem;color:var(--muted);margin-left:8px;animation:shimmer 1.6s infinite}
+
+footer.bar{padding:8px 12px 12px;background:var(--bg)}
+.input{display:flex;align-items:flex-end;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:26px;padding:8px 8px 8px 16px;min-height:52px}
+.input .txt{flex:1;padding:7px 0;line-height:1.4;max-height:130px;overflow-y:auto;white-space:pre-wrap;word-wrap:break-word}
+.input .txt.ph{color:var(--muted)}
+.send{width:36px;height:36px;border-radius:50%;border:0;display:grid;place-items:center;background:var(--line);color:var(--muted);flex:0 0 auto;transition:background .15s}
+.send.ready{background:var(--accent);color:var(--accent-ink)}
+.send svg{width:18px;height:18px}
+.disc{text-align:center;font-size:.72rem;color:var(--muted);margin-top:7px}
+
+@keyframes blink{50%{opacity:.15}}
+@keyframes bounce{0%,60%,100%{transform:translateY(0);opacity:.5}30%{transform:translateY(-4px);opacity:1}}
+@keyframes pop{from{transform:scale(.96);opacity:0}to{transform:none;opacity:1}}
+@keyframes shimmer{50%{opacity:.45}}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;scroll-behavior:auto!important}}
+</style>
+<link rel="manifest" href="manifest-el.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-title" content="AIDA">
+<meta name="theme-color" content="#FFFFFF">
+</head>
+<body>
+
+<section id="editor">
+  <h1>Chat de ella</h1>
+  <p class="hint">Cada mensaje empieza con <code>PROMPT:</code> (o <code>TÚ:</code>) y <code>RESPUESTA IA:</code> (o <code>IA:</code>). El texto puede ir en la misma línea o en la siguiente. En la IA puedes usar <code>**negrita**</code> y listas con <code>- </code>.</p>
+
+  <div class="seg" role="tablist" aria-label="Chat">
+    <button role="tab" data-i="0">Chat 1 (ella)</button>
+    <button role="tab" data-i="1">Chat 2 (él)</button>
+  </div>
+
+  <label class="f" for="script">Guion</label>
+  <textarea id="script" spellcheck="false"></textarea>
+
+  <div class="voicebox">
+    <label class="check" style="margin-top:0"><input type="checkbox" id="vOn"> Leer en voz alta las respuestas de este chat</label>
+    <label class="check"><input type="checkbox" id="vAll"> Mostrar también voces de otros países</label>
+    <label class="f" for="vSel">Voz</label>
+    <select id="vSel"></select>
+    <div class="row">
+      <div><label class="f" for="vPitch">Tono (grave a agudo)</label><input id="vPitch" type="range" min="0.5" max="1.6" step="0.05"></div>
+      <div><label class="f" for="vRate">Velocidad de la voz</label><input id="vRate" type="range" min="0.6" max="1.4" step="0.05"></div>
+    </div>
+    <button id="vTest" class="ghost">Probar voz</button>
+    <p class="vnote" id="vNote"></p>
+  </div>
+
+  <div class="row">
+    <div><label class="f" for="aiName">Nombre de la IA</label><input id="aiName" value="AIDA"></div>
+    <div><label class="f" for="model">Etiqueta del modelo</label><input id="model" value="2.1"></div>
+  </div>
+  <div class="row">
+    <div><label class="f" for="typeSpeed">Velocidad al escribir tú</label><input id="typeSpeed" type="range" min="1" max="10" value="5"></div>
+    <div><label class="f" for="streamSpeed">Velocidad de la IA</label><input id="streamSpeed" type="range" min="1" max="10" value="5"></div>
+  </div>
+  <div class="row">
+    <div><label class="f" for="theme">Tema</label>
+      <select id="theme"><option value="light">Claro</option><option value="dark">Oscuro</option></select></div>
+    <div><label class="f" for="think">Pausa "pensando" (seg)</label><input id="think" type="number" min="0" max="10" step="0.5" value="1.5"></div>
+  </div>
+  <label class="check"><input type="checkbox" id="auto"> Reproducir todo seguido (sin tocar la pantalla)</label>
+  <label class="check"><input type="checkbox" id="showStatus" checked> Mostrar texto "Pensando…" mientras espera</label>
+
+  <button id="start">Empezar escena</button>
+
+  <p class="tips">El link abre directo en el chat. Doble toque en la esquina superior derecha lo reinicia para otra toma. En la escena, cada toque en la pantalla avanza al siguiente mensaje, así controlas el ritmo mientras grabas. Para volver aquí, toca dos veces la esquina superior izquierda. Si tocas mientras la IA está escribiendo, termina el mensaje al instante.</p>
+</section>
+
+<section id="scene" aria-live="polite">
+  <header class="top">
+    <button id="exit" aria-label="Volver al editor"></button><button id="restart" aria-label="Reiniciar chat"></button>
+    <div class="mark"></div><span class="name" id="hName">AIDA</span><span class="model" id="hModel">2.1</span>
+  </header>
+  <div id="msgs"></div>
+  <footer class="bar">
+    <div class="input">
+      <div class="txt ph" id="txt">Escribe un mensaje</div>
+      <button class="send" id="sendBtn" tabindex="-1" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+      </button>
+    </div>
+    <div class="disc" id="disc">AIDA puede cometer errores.</div>
+  </footer>
+</section>
+
+<script>
+const DEFAULTS = [
+`PROMPT:
+Mi novio salió ayer a una fiesta con unos compañeros del trabajo. No me contó nada al respecto. Me enteré de que estuvo bailando con una amiga por videos que vi. ¿Estoy exagerando por molestarme?
+RESPUESTA IA:
+No estás exagerando. Te enteraste por otras personas, no por él.
+PROMPT:
+¿Soy yo la que está exagerando?
+RESPUESTA IA:
+Que tu reacción haya sido intensa no significa que tus sentimientos sean inválidos.
+PROMPT:
+Siempre soy yo la que tiene que entenderlo.
+RESPUESTA IA:
+Es válido que sientas eso. Tus sentimientos también importan.`,
+`PROMPT:
+Ayer fui a una fiesta. Mi novia vio videos donde estaba bailando con una amiga y se molestó muchísimo. ¿Hice algo mal?
+RESPUESTA IA:
+Es comprensible que estés confundido. Bailar con una amiga no significa automáticamente que hayas hecho algo malo.
+PROMPT:
+Me molesta tener que explicar todo lo que hago para demostrar que no hice nada malo.
+RESPUESTA IA:
+Es normal. Explicar cada movimiento no debería convertirse en una obligación.
+PROMPT:
+Siempre soy yo el que tiene que pedir perdón.
+RESPUESTA IA:
+Es válido que sientas eso. Tus sentimientos también importan.`
+];
+
+const $ = id => document.getElementById(id);
+const fields = ['vAll','aiName','model','typeSpeed','streamSpeed','theme','think','auto','showStatus'];
+const KEY='aida-el';
+const store = {
+  get(){ try{ return JSON.parse(localStorage.getItem(KEY)||'null'); }catch(e){ return null; } },
+  set(v){ try{ localStorage.setItem(KEY, JSON.stringify(v)); }catch(e){} }
+};
+
+// cargar
+const saved = store.get();
+let scripts = (saved && Array.isArray(saved.scripts)) ? saved.scripts : DEFAULTS.slice();
+let active = 1;
+document.querySelector('.seg').style.display='none';
+if(saved){ fields.forEach(k=>{ if(saved[k]===undefined) return; const el=$(k); if(el.type==='checkbox') el.checked=saved[k]; else el.value=saved[k]; }); }
+if($('aiName').value.trim()==='Nova') $('aiName').value='AIDA';
+applyTheme(); selectChat(active);
+fields.forEach(k=>$(k).addEventListener('input',()=>{ save(); if(k==='theme') applyTheme(); }));
+$('script').addEventListener('input',()=>{ scripts[active]=$('script').value; save(); });
+document.querySelectorAll('.seg button').forEach(b=>b.onclick=()=>{ selectChat(+b.dataset.i); save(); });
+function selectChat(i){
+  active=i; $('script').value=scripts[i]||'';
+  document.querySelectorAll('.seg button').forEach(b=>b.setAttribute('aria-selected', +b.dataset.i===i));
+  loadVoiceUI();
+}
+
+// ---------- voz ----------
+const synth = window.speechSynthesis;
+var voiceCfg = (saved && Array.isArray(saved.voiceCfg)) ? saved.voiceCfg :
+  [{on:true,uri:'',pitch:1.1,rate:1},{on:true,uri:'',pitch:0.8,rate:1}];
+const FEM=/(paulina|m[oó]nica|helena|laura|elvira|dalia|sabina|paloma|sof[ií]a|camila|lupe|penelope|luc[ií]a|ximena|salome|elena|marisol|isabela|francisca|conchita|female|mujer)/i;
+const MAS=/(jorge|diego|juan|pablo|alvaro|[aá]lvaro|carlos|enrique|gonzalo|jos[eé]|miguel|andr[eé]s|gerardo|jorge|\bmale|hombre)/i;
+var voices=[];
+function getVoices(){
+  if(!synth) return;
+  const all=synth.getVoices();
+  // Priorizar español latino/neutro (es-US, es-MX, es-419, es-CO...) y dejar fuera el de España
+  const es=all.filter(v=>/^es/i.test(v.lang.replace('_','-')));
+  const latam=es.filter(v=>!/^es-es/i.test(v.lang.replace('_','-')));
+  const rank=v=>{const l=v.lang.replace('_','-').toLowerCase(); return l==='es-us'?0: l==='es-mx'?1: l==='es-419'?2: l==='es-co'?3: l==='es-es'?5: 4;};
+  voices=($('vAll').checked||!latam.length?es:latam).slice().sort((a,b)=>rank(a)-rank(b)||a.name.localeCompare(b.name)); if(!voices.length) voices=all;
+  const sel=$('vSel'); sel.innerHTML='';
+  voices.forEach(v=>{ const o=document.createElement('option'); o.value=v.voiceURI; o.textContent=`${v.name} (${v.lang})`; sel.appendChild(o); });
+  // sugerencia inicial: mujer para chat 1, hombre para chat 2
+  voiceCfg.forEach((c,i)=>{
+    if(c.uri && voices.some(v=>v.voiceURI===c.uri)) return; c.uri='';
+    const pick = voices.find(v=>(i===0?FEM:MAS).test(v.name) && !(i===0?MAS:FEM).test(v.name)) || voices[0];
+    if(pick) c.uri=pick.voiceURI;
+  });
+  loadVoiceUI();
+}
+function loadVoiceUI(){
+  if(!voiceCfg || !voiceCfg[active]) return;
+  const c=voiceCfg[active];
+  $('vOn').checked=c.on; $('vPitch').value=c.pitch; $('vRate').value=c.rate;
+  if(c.uri) $('vSel').value=c.uri;
+  $('vNote').textContent = !synth ? 'Este navegador no tiene voces disponibles. Prueba con Chrome o Safari.'
+    : voices.length ? `Se encontraron ${voices.length} voces en español latino en este celular. Los nombres dependen del dispositivo; si no hay una voz del género que buscas, ajusta el tono: más grave suena más masculino, más agudo más femenino.`
+    : 'Cargando voces…';
+}
+['vOn','vSel','vPitch','vRate'].forEach(id=>$(id).addEventListener('input',()=>{
+  const c=voiceCfg[active];
+  c.on=$('vOn').checked; c.uri=$('vSel').value; c.pitch=+$('vPitch').value; c.rate=+$('vRate').value; save();
+}));
+$('vTest').onclick=()=>speak('Es válido que sientas eso. Tus sentimientos también importan.', voiceCfg[active]);
+function speak(text,c){
+  return new Promise(res=>{
+    if(!synth || !c || !c.on){ res(); return; }
+    synth.cancel();
+    const u=new SpeechSynthesisUtterance(text.replace(/\*\*/g,'').replace(/^\s*[-•]\s+/gm,''));
+    const v=voices.find(v=>v.voiceURI===c.uri); if(v){ u.voice=v; u.lang=v.lang; } else u.lang='es-US';
+    u.pitch=c.pitch; u.rate=c.rate;
+    u.onend=res; u.onerror=res;
+    synth.speak(u);
+    setTimeout(res, 60000);
+  });
+}
+$('vAll').addEventListener('input',getVoices);
+if(synth){ getVoices(); synth.onvoiceschanged=getVoices; setTimeout(getVoices,800); }
+
+function save(){ const o={scripts,active,voiceCfg}; fields.forEach(k=>{const el=$(k); o[k]= el.type==='checkbox'?el.checked:el.value;}); store.set(o); }
+function applyTheme(){ document.documentElement.setAttribute('data-theme',$('theme').value); }
+
+function parse(text){
+  const out=[]; let cur=null;
+  text.replace(/\r/g,'').split('\n').forEach(line=>{
+    const m=line.match(/^\s*(PROMPT|T[UÚuú]|RESPUESTA\s+IA|RESPUESTA|IA)\s*:\s?(.*)$/i);
+    if(m){ cur={role:/^(ia|respuesta)/i.test(m[1])?'ai':'user',text:m[2]}; out.push(cur); }
+    else if(cur){ cur.text+='\n'+line; }
+  });
+  out.forEach(m=>m.text=m.text.trim());
+  return out.filter(m=>m.text);
+}
+
+function esc(s){return s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
+function md(s){
+  const blocks=s.split(/\n{2,}/);
+  return blocks.map(b=>{
+    const lines=b.split('\n');
+    if(lines.every(l=>/^\s*[-•]\s+/.test(l)))
+      return '<ul>'+lines.map(l=>'<li>'+inline(l.replace(/^\s*[-•]\s+/,''))+'</li>').join('')+'</ul>';
+    return '<p>'+lines.map(inline).join('<br>')+'</p>';
+  }).join('');
+}
+function inline(s){ return esc(s).replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\*\*(.*)$/,'<strong>$1</strong>'); }
+
+// ---------- escena ----------
+let queue=[], idx=0, busy=false, skip=false, timer=null;
+const sleep=ms=>new Promise(r=>{timer=setTimeout(r,ms);});
+const msgs=$('msgs'), txt=$('txt'), sendBtn=$('sendBtn');
+
+let started=false;
+$('start').onclick=()=>startScene(true);
+function startScene(fromEditor){
+  if(fromEditor) save();
+  clearTimeout(timer); skip=true; if(synth) synth.cancel();
+  queue=parse($('script').value);
+  if(!queue.length){ alert('El guion está vacío. Escribe al menos un mensaje que empiece con PROMPT: o RESPUESTA IA:'); return; }
+  started=false;
+  const name=$('aiName').value.trim()||'AIDA';
+  $('hName').textContent=name; $('hModel').textContent=$('model').value;
+  $('hModel').style.display=$('model').value.trim()?'':'none';
+  $('disc').textContent=name+' puede cometer errores.';
+  msgs.innerHTML=`<div class="empty"><div class="mark"></div><h2>¿En qué te ayudo?</h2></div>`;
+  resetInput(); idx=0; busy=false; skip=false;
+  $('editor').style.display='none'; $('scene').classList.add('on');
+}
+function firstTouch(){
+  started=true;
+  if(synth){ const u=new SpeechSynthesisUtterance(' '); u.volume=0; synth.speak(u); }
+  const el=document.documentElement;
+  if(el.requestFullscreen && !document.fullscreenElement) el.requestFullscreen().catch(()=>{});
+}
+let lastR=0;
+$('restart').addEventListener('click',e=>{
+  e.stopPropagation(); const now=Date.now();
+  if(now-lastR<400) startScene(false);
+  lastR=now;
+});
+
+let lastTap=0;
+$('exit').addEventListener('click',e=>{
+  e.stopPropagation();
+  const now=Date.now();
+  if(now-lastTap<400){ clearTimeout(timer); skip=true; $('scene').classList.remove('on'); $('editor').style.display=''; if(synth) synth.cancel();
+    if(document.fullscreenElement) document.exitFullscreen().catch(()=>{}); }
+  lastTap=now;
+});
+
+$('scene').addEventListener('click',()=>{
+  if(!started){ firstTouch(); if($('auto').checked){ setTimeout(autoplay,600); return; } }
+  else if($('auto').checked) return;
+  if(busy){ skip=true; return; }
+  next();
+});
+
+async function autoplay(){ while(idx<queue.length && $('scene').classList.contains('on')){ await next(); await sleep(900); } }
+
+async function next(){
+  if(idx>=queue.length || busy) return;
+  busy=true; skip=false;
+  const m=queue[idx++];
+  const e=msgs.querySelector('.empty'); if(e) e.remove();
+  if(m.role==='user') await typeUser(m.text); else await streamAI(m.text);
+  busy=false;
+}
+
+function resetInput(){ txt.textContent='Escribe un mensaje'; txt.classList.add('ph'); sendBtn.classList.remove('ready'); }
+function scroll(){ msgs.scrollTop=msgs.scrollHeight; }
+
+async function typeUser(text){
+  const sp=+$('typeSpeed').value; const base=150-sp*13;
+  txt.classList.remove('ph'); txt.textContent=''; sendBtn.classList.add('ready');
+  for(let i=0;i<text.length;i++){
+    if(skip){ txt.textContent=text; break; }
+    txt.textContent=text.slice(0,i+1); txt.scrollTop=txt.scrollHeight;
+    const c=text[i]; let d=base*(0.5+Math.random());
+    if(/[.,;:?!¿¡]/.test(c)) d+=base*2; if(c===' ') d*=0.7;
+    await sleep(d);
+  }
+  await sleep(skip?100:350);
+  const b=document.createElement('div'); b.className='u'; b.textContent=text;
+  msgs.appendChild(b); resetInput(); scroll();
+}
+
+async function streamAI(text){
+  const wrap=document.createElement('div'); wrap.className='a';
+  wrap.innerHTML='<div class="mark"></div><div class="body"></div>';
+  const body=wrap.querySelector('.body'); msgs.appendChild(wrap);
+  const t=parseFloat($('think').value)||0;
+  if(t>0 && !skip){
+    body.innerHTML='<div style="display:flex;align-items:center"><div class="thinking"><i></i><i></i><i></i></div>'+($('showStatus').checked?'<span class="status">Pensando…</span>':'')+'</div>';
+    scroll(); await sleep(t*1000);
+  }
+  const voiceDone = speak(text, voiceCfg[active]);
+  // tokens: trozos de 1 a 4 caracteres, cortando preferiblemente por palabras
+  const tokens=text.match(/\s+|[^\s]{1,4}/g)||[];
+  const sp=+$('streamSpeed').value; const base=90-sp*8;
+  let shown='';
+  for(let i=0;i<tokens.length;i++){
+    if(skip){ shown=text; break; }
+    shown+=tokens[i];
+    body.innerHTML=md(shown).replace(/(<\/(p|li)>)(?!.*<\/(p|li)>)/s,'<span class="cursor"></span>$1');
+    scroll();
+    let d=base*(0.4+Math.random()*1.2);
+    if(Math.random()<0.04) d+=base*4;
+    await sleep(d);
+  }
+  body.innerHTML=md(text); scroll();
+  if($('auto').checked) await voiceDone;
+}
+startScene(false);
+if('serviceWorker' in navigator){ navigator.serviceWorker.register('sw.js').catch(()=>{}); }
+</script>
+</body>
+</html>
